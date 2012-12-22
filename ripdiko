@@ -1,0 +1,182 @@
+#!/usr/bin/env ruby
+
+require 'net/https'
+require 'uri'
+require 'pathname'
+require 'base64'
+require 'open-uri'
+require 'nokogiri'
+require 'date'
+require 'fileutils'
+
+class DownloadTask
+  PLAYER_URL = "http://radiko.jp/player/swf/player_3.0.0.01.swf"
+
+  attr_accessor :station, :cache, :buffer, :outdir
+
+  def initialize(station = nil, duration = 1800, *args)
+    unless station
+      abort "Usage: ripdiko [station-id]"
+    end
+    @buffer = ENV['RIPDIKO_BUFFER'] || 60
+    @outdir = ENV['RIPDIKO_OUTDIR'] || "#{ENV['HOME']}/Music/Radiko"
+    @station = station
+    @duration = duration
+    @cache = CacheDir.new(ENV['TMPDIR'])
+  end
+
+  def authenticate
+    unless cache['authkey.png'].exist?
+      download PLAYER_URL, cache['player.swf']
+      system *(%W(swfextract -b 14 #{cache['player.swf']} -o #{cache['authkey.png']}))
+    end
+
+    unless cache['authkey.png'].exist?
+      abort "failed to extract authkey out of player.swf"
+    end
+
+    res = fetch_auth "https://radiko.jp/v2/api/auth1_fms",
+      'pragma' => "no-cache",
+      'X-Radiko-App' => "pc_1",
+      'X-Radiko-App-Version' => "2.0.1",
+      'X-Radiko-User' => "test-stream",
+      'X-Radiko-Device' => "pc"
+
+    unless token = res['X-Radiko-AuthToken']
+      abort "auth1_fms failed"
+    end
+
+    length = res['X-Radiko-KeyLength'].to_i
+    offset = res['X-Radiko-KeyOffset'].to_i
+    partial_key = Base64.strict_encode64(IO.binread(cache['authkey.png'], length, offset))
+
+    res = fetch_auth "https://radiko.jp/v2/api/auth2_fms",
+      'pragma' => "no-cache",
+      'X-Radiko-App' => "pc_1",
+      'X-Radiko-App-Version' => "2.0.1",
+      'X-Radiko-User' => "test-stream",
+      'X-Radiko-Device' => "pc",
+      'X-Radiko-Authtoken' => token,
+      'X-Radiko-Partialkey' => partial_key
+
+    if /^(.*),/ === res.body
+      token
+    else
+      abort "auth2 failed. Outside Japan?"
+    end
+  end
+
+  def val(node, xpath)
+    node.xpath(".//#{xpath}").first.content
+  end
+
+  def parse_time(str)
+    DateTime.strptime("#{str}+0900", "%Y%m%d%H%M%S%Z").to_time
+  end
+
+  def area_id
+    ENV['RIPDIKO_AREA_ID'] || "JP13" # Tokyo
+  end
+
+  def now_playing
+    now = Time.now
+    doc = Nokogiri::XML(open("http://radiko.jp/v2/api/program/now?area_id=#{area_id}"))
+
+    node = doc.xpath(%Q|//station[@id="#{station}"]|).first
+    node.xpath(".//prog").each do |prog|
+      from = parse_time(prog[:ft])
+      if now.to_i + buffer >= from.to_i
+        return {
+          station: val(node, :name),
+          id: "#{station}-#{prog[:ft]}",
+          title: val(prog, :title),
+          from: from,
+          to: parse_time(prog[:to]),
+          duration: prog[:dur].to_i,
+          subtitle: val(prog, :sub_title),
+          performer: val(prog, :pfm),
+       }
+      end
+    end
+  end
+
+  def run
+    token = authenticate
+    meta = now_playing
+
+    # title midnight show with the previous day
+    time = meta[:from].hour < 5 ? meta[:from] - 1 : meta[:from]
+    meta[:date] = Date.new(time.year, time.month, time.day)
+
+    duration = [(meta[:to] - Time.now).to_i + 1, meta[:duration]].min + buffer
+
+    FileUtils.mkpath(outdir)
+
+    command = %W(
+      rtmpdump -v
+      -r rtmpe://w-radiko.smartstream.ne.jp
+      --playpath simul-stream.stream
+      --app #{station}/_definst_
+      -W #{PLAYER_URL}
+      -C S:"" -C S:"" -C S:"" -C S:#{token}
+      --live --stop #{duration} -o - |
+      ffmpeg -y -i - -vn
+      -metadata author="#{meta[:performer]}"
+      -metadata artist="#{meta[:station]}"
+      -metadata title="#{meta[:title]} #{meta[:date].strftime}"
+      -metadata album="#{meta[:title]}"
+      -metadata genre=Radio
+      -metadata year="#{meta[:date].year}"
+      -acodec libmp3lame -ar 44100 -ab 64k -ac 2
+      "#{outdir}/#{meta[:id]}.mp3"
+    )
+
+    system command.join(" ")
+  end
+
+  def fetch_auth(url, headers)
+    hdrs = headers.map {|k,v| "--header=\"#{k}: #{v}\"" }.join(" ")
+    AuthResponse.new(`wget -q #{hdrs} --post-data='\\r\\n' --no-check-certificate --save-headers -O - #{url}`)
+  end
+
+  def download(url, path)
+    unless path.exist?
+      system *(%W(wget -q -O #{path} #{url}))
+    end
+  end
+
+  def abort(msg)
+    puts msg
+    exit 1
+  end
+end
+
+class AuthResponse
+  def initialize(payload)
+    @payload = payload
+  end
+
+  def body
+    @payload.split(/\r\n\r\n/, 2)[1]
+  end
+
+  def [](name)
+    if (match = @payload.scan(/^#{name}[:=] *(\S+)/i).first)
+      match[0]
+    end
+  end
+end
+
+class CacheDir
+  attr_accessor :dir
+  def initialize(dir)
+    @dir = dir
+    @paths = {}
+  end
+
+  def [](name)
+    @paths[name] ||= Pathname.new(File.join(@dir, name))
+  end
+end
+
+DownloadTask.new(*ARGV).run
