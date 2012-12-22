@@ -113,7 +113,8 @@ class DownloadTask
     duration = [(meta[:to] - Time.now).to_i + 1, meta[:duration]].min + buffer
 
     tempfile = "#{TMPDIR}/#{meta[:id]}.mp3"
-    puts "Streaming #{station} for #{duration}s & ripping to #{tempfile}"
+    puts "Streaming #{meta[:title]} ~ #{meta[:to].strftime("%H:%M")} (#{duration}s)"
+    puts "Ripping audio file to #{tempfile}"
 
     command = %W(
       rtmpdump --live --quiet
