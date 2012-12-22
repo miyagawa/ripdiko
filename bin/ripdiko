@@ -11,6 +11,7 @@ require 'fileutils'
 
 class DownloadTask
   PLAYER_URL = "http://radiko.jp/player/swf/player_3.0.0.01.swf"
+  TMPDIR = ENV['TMPDIR'] || '/tmp'
 
   attr_accessor :station, :cache, :buffer, :outdir, :bitrate
 
@@ -20,7 +21,7 @@ class DownloadTask
     end
     @station = station
     @duration = duration
-    @cache = CacheDir.new(ENV['TMPDIR'])
+    @cache = CacheDir.new(TMPDIR)
     @buffer = ENV['RIPDIKO_BUFFER'] || 60
     @outdir = ENV['RIPDIKO_OUTDIR'] || "#{ENV['HOME']}/Music/Radiko"
     @bitrate = ENV['RIPDIKO_BITRATE'] || '64k'
@@ -111,7 +112,7 @@ class DownloadTask
 
     duration = [(meta[:to] - Time.now).to_i + 1, meta[:duration]].min + buffer
 
-    tempfile = "#{ENV['TMPDIR']}/#{meta[:id]}.mp3"
+    tempfile = "#{TMPDIR}/#{meta[:id]}.mp3"
     puts "Streaming #{station} for #{duration}s & ripping to #{tempfile}"
 
     command = %W(
