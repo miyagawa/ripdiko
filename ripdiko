@@ -89,7 +89,7 @@ class DownloadTask
       if now.to_i + buffer >= from.to_i
         return {
           station: val(node, :name),
-          id: "#{station}-#{prog[:ft]}",
+          id: "#{prog[:ft]}-#{station}",
           title: val(prog, :title),
           from: from,
           to: parse_time(prog[:to]),
