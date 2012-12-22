@@ -88,7 +88,7 @@ class DownloadTask
     node.xpath(".//prog").each do |prog|
       from, to = parse_time(prog[:ft]), parse_time(prog[:to])
       start_time = now.to_i + buffer
-      if from.to_i <= start_time && start_time < to.i
+      if from.to_i <= start_time && start_time < to.to_i
         return {
           station: val(node, :name),
           id: "#{prog[:ft]}-#{station}",
