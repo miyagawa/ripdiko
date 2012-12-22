@@ -131,7 +131,7 @@ class DownloadTask
       -metadata genre=Radio
       -metadata year="#{meta[:date].year}"
       -acodec libmp3lame -ar 44100 -ab #{bitrate} -ac 2
-      tempfile
+      #{tempfile}
     )
 
     system command.join(" ")
