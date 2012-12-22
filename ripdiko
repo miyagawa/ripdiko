@@ -12,17 +12,18 @@ require 'fileutils'
 class DownloadTask
   PLAYER_URL = "http://radiko.jp/player/swf/player_3.0.0.01.swf"
 
-  attr_accessor :station, :cache, :buffer, :outdir
+  attr_accessor :station, :cache, :buffer, :outdir, :bitrate
 
   def initialize(station = nil, duration = 1800, *args)
     unless station
       abort "Usage: ripdiko [station-id]"
     end
-    @buffer = ENV['RIPDIKO_BUFFER'] || 60
-    @outdir = ENV['RIPDIKO_OUTDIR'] || "#{ENV['HOME']}/Music/Radiko"
     @station = station
     @duration = duration
     @cache = CacheDir.new(ENV['TMPDIR'])
+    @buffer = ENV['RIPDIKO_BUFFER'] || 60
+    @outdir = ENV['RIPDIKO_OUTDIR'] || "#{ENV['HOME']}/Music/Radiko"
+    @bitrate = ENV['RIPDIKO_BITRATE'] || '64k'
   end
 
   def authenticate
@@ -127,7 +128,7 @@ class DownloadTask
       -metadata album="#{meta[:title]}"
       -metadata genre=Radio
       -metadata year="#{meta[:date].year}"
-      -acodec libmp3lame -ar 44100 -ab 64k -ac 2
+      -acodec libmp3lame -ar 44100 -ab #{bitrate} -ac 2
       "#{outdir}/#{meta[:id]}.mp3"
     )
 
