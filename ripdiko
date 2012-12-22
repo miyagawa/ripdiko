@@ -113,8 +113,10 @@ class DownloadTask
 
     FileUtils.mkpath(outdir)
 
+    puts "ripdiko: Streaming #{station} for #{duration} sec, ripping to #{meta[:id]}.mp3"
+
     command = %W(
-      rtmpdump -v
+      rtmpdump --live --quiet
       -r rtmpe://w-radiko.smartstream.ne.jp
       --playpath simul-stream.stream
       --app #{station}/_definst_
@@ -122,6 +124,7 @@ class DownloadTask
       -C S:"" -C S:"" -C S:"" -C S:#{token}
       --live --stop #{duration} -o - |
       ffmpeg -y -i - -vn
+      -loglevel error
       -metadata author="#{meta[:performer]}"
       -metadata artist="#{meta[:station]}"
       -metadata title="#{meta[:title]} #{meta[:date].strftime}"
