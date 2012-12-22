@@ -112,7 +112,7 @@ class DownloadTask
     duration = [(meta[:to] - Time.now).to_i + 1, meta[:duration]].min + buffer
 
     tempfile = "#{ENV['TMPDIR']}/#{meta[:id]}.mp3"
-    puts "ripdiko: Streaming #{station} for #{duration} sec, ripping to #{tempfile}"
+    puts "Streaming #{station} for #{duration}s & ripping to #{tempfile}"
 
     command = %W(
       rtmpdump --live --quiet
