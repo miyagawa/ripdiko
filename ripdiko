@@ -111,9 +111,8 @@ class DownloadTask
 
     duration = [(meta[:to] - Time.now).to_i + 1, meta[:duration]].min + buffer
 
-    FileUtils.mkpath(outdir)
-
-    puts "ripdiko: Streaming #{station} for #{duration} sec, ripping to #{meta[:id]}.mp3"
+    tempfile = "#{ENV['TMPDIR']}/#{meta[:id]}.mp3"
+    puts "ripdiko: Streaming #{station} for #{duration} sec, ripping to #{tempfile}"
 
     command = %W(
       rtmpdump --live --quiet
@@ -132,10 +131,13 @@ class DownloadTask
       -metadata genre=Radio
       -metadata year="#{meta[:date].year}"
       -acodec libmp3lame -ar 44100 -ab #{bitrate} -ac 2
-      "#{outdir}/#{meta[:id]}.mp3"
+      tempfile
     )
 
     system command.join(" ")
+
+    FileUtils.mkpath(outdir)
+    File.rename tempfile, "#{outdir}/#{meta[:id]}.mp3"
   end
 
   def fetch_auth(url, headers)
