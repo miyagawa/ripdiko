@@ -80,7 +80,7 @@ class DownloadTask
     ENV['RIPDIKO_AREA_ID'] || "JP13" # Tokyo
   end
 
-  def now_playing
+  def now_playing(station)
     now = Time.now
     doc = Nokogiri::XML(open("http://radiko.jp/v2/api/program/now?area_id=#{area_id}"))
 
@@ -89,32 +89,29 @@ class DownloadTask
       from, to = parse_time(prog[:ft]), parse_time(prog[:to])
       start_time = now.to_i + buffer
       if from.to_i <= start_time && start_time < to.to_i
-        return {
-          station: val(node, :name),
+        return Program.new(
           id: "#{prog[:ft]}-#{station}",
+          station: val(node, :name),
           title: val(prog, :title),
           from: from,
           to: to,
           duration: prog[:dur].to_i,
           subtitle: val(prog, :sub_title),
           performer: val(prog, :pfm),
-       }
+          info: val(prog, :info),
+        )
       end
     end
   end
 
   def run
     token = authenticate
-    meta = now_playing
+    program = now_playing(station)
 
-    # title midnight show with the previous day
-    time = meta[:from].hour < 5 ? meta[:from] - 1 : meta[:from]
-    meta[:date] = Date.new(time.year, time.month, time.day)
+    duration = program.recording_duration + buffer
 
-    duration = (meta[:to] - Time.now).to_i + buffer
-
-    tempfile = "#{TMPDIR}/#{meta[:id]}.mp3"
-    puts "Streaming #{meta[:title]} ~ #{meta[:to].strftime("%H:%M")} (#{duration}s)"
+    tempfile = "#{TMPDIR}/#{program.id}.mp3"
+    puts "Streaming #{program.title} ~ #{program.to.strftime("%H:%M")} (#{duration}s)"
     puts "Ripping audio file to #{tempfile}"
 
     command = %W(
@@ -127,12 +124,12 @@ class DownloadTask
       --live --stop #{duration} -o - |
       ffmpeg -y -i - -vn
       -loglevel error
-      -metadata author="#{meta[:performer]}"
-      -metadata artist="#{meta[:station]}"
-      -metadata title="#{meta[:title]} #{meta[:date].strftime}"
-      -metadata album="#{meta[:title]}"
+      -metadata author="#{program.performer}"
+      -metadata artist="#{program.station}"
+      -metadata title="#{program.title} #{program.effective_date.strftime}"
+      -metadata album="#{program.title}"
       -metadata genre=Radio
-      -metadata year="#{meta[:date].year}"
+      -metadata year="#{program.effective_date.year}"
       -acodec libmp3lame -ar 44100 -ab #{bitrate} -ac 2
       #{tempfile}
     )
@@ -140,7 +137,7 @@ class DownloadTask
     system command.join(" ")
 
     FileUtils.mkpath(outdir)
-    File.rename tempfile, "#{outdir}/#{meta[:id]}.mp3"
+    File.rename tempfile, "#{outdir}/#{program.id}.mp3"
   end
 
   def fetch_auth(url, headers)
@@ -157,6 +154,24 @@ class DownloadTask
   def abort(msg)
     puts msg
     exit 1
+  end
+end
+
+class Program
+  attr_accessor :id, :station, :title, :from, :to, :duration, :subtitle, :performer, :info
+  def initialize(args = {})
+    args.each do |k, v|
+      send "#{k}=", v
+    end
+  end
+
+  def effective_date
+    time = from.hour < 5 ? from - 24 * 60 * 60 : from
+    Date.new(time.year, time.month, time.day)
+  end
+
+  def recording_duration
+    (to - Time.now).to_i
   end
 end
 
