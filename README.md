@@ -28,6 +28,17 @@ The list of available station IDs in your area code can be retrieved with (repla
 
     curl "http://radiko.jp/v2/api/program/now?area_id=JP13" | grep "<station id="
 
+## Scripts
+
+ripdiko supports calling your script once the recording is done. Save your script `recording_finished` in `~/.ripdiko/scripts/` as an executable, it will be called from ripdiko with the following environment variables:
+
+- `RIPDIKO_PROGRAM_TITLE`
+- `RIPDIKO_PROGRAM_STATION`
+- `RIPDIKO_PROGRAM_DURATION`
+- `RIPDIKO_PROGRAM_SUBTITLE`
+- `RIPDIKO_PROGRAM_PERFORMER`
+- `RIPDIKO_RECORDING_TIME`
+
 ## Requirements
 
 Recommended to install the following with Homebrew (on Mac OS X) and bundler.

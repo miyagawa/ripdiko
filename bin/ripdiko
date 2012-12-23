@@ -9,7 +9,41 @@ require 'nokogiri'
 require 'date'
 require 'fileutils'
 
+module Notifier
+  SCRIPTS = ENV['RIPDIKO_SCRIPTS'] || "#{ENV['HOME']}/.ripdiko/scripts"
+
+  def notify(hook, args)
+    script = "#{SCRIPTS}/#{hook.to_s}"
+    if File.executable?(script)
+      system build_environment(args), script
+    end
+  end
+
+  def build_environment(args)
+    env = Hash.new
+    walk_down(env, args, "RIPDIKO")
+    env
+  end
+
+  def walk_down(env, value, prefix)
+    case value
+    when Hash
+      value.each do |key, value|
+        walk_down(env, value, "#{prefix}_#{key.upcase}")
+      end
+    when Array
+      value.each_with_index do |value, i|
+        walk_down(env, value, "#{prefix}_#{i}")
+      end
+    else
+      env[prefix] = value.to_s
+    end
+  end
+end
+
 class DownloadTask
+  include Notifier
+
   PLAYER_URL = "http://radiko.jp/player/swf/player_3.0.0.01.swf"
   TMPDIR = ENV['TMPDIR'] || '/tmp'
 
@@ -138,6 +172,19 @@ class DownloadTask
 
     FileUtils.mkpath(outdir)
     File.rename tempfile, "#{outdir}/#{program.id}.mp3"
+
+    notification = {
+      :program => {
+        title: program.title,
+        station: program.station,
+        duration: program.duration,
+        subtitle: program.subtitle,
+        performer: program.performer,
+      },
+      :recording_time => duration
+    }
+
+    notify :recording_finished, notification
   end
 
   def fetch_auth(url, headers)
