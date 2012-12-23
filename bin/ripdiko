@@ -111,7 +111,7 @@ class DownloadTask
     time = meta[:from].hour < 5 ? meta[:from] - 1 : meta[:from]
     meta[:date] = Date.new(time.year, time.month, time.day)
 
-    duration = [(meta[:to] - Time.now).to_i + 1, meta[:duration]].min + buffer
+    duration = (meta[:to] - Time.now).to_i + buffer
 
     tempfile = "#{TMPDIR}/#{meta[:id]}.mp3"
     puts "Streaming #{meta[:title]} ~ #{meta[:to].strftime("%H:%M")} (#{duration}s)"
