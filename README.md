@@ -14,7 +14,11 @@ Run `ripdiko <station-id>` where station ID is `TBS`, `LFR`, `FMJ` etc. The scri
 
 ### Schedule and Buffer
 
-You can run the script periodically with either crontab or Automator in iCal alarm. Be sure to configure the server clock to be accurate. You *could* run the script up to one minute before the show (i.e. run the script on 1:59 for the program that stats on 2:00) if you're paranoid, but don't run it earlier than that. Radiko itself apparently buffers the first 10 to 15 second in the stream, so it's actally safe to run the script on the exact time.
+You can run the script periodically with either crontab or Automator in iCal alarm.
+
+Be sure to configure the server clock to be accurate. You *could* run the script up to one minute before the show (i.e. run the script on 1:59 for the program that starts on 2:00) if you're paranoid, but don't run it earlier than that, since this script has a one minute buffer for the recording by default (if you record a 2:00-2:30 show starting on 2:00, the recording will end on 2:31).
+
+Because Radiko itself apparently buffers (delays) the first 10 to 15 second in the stream, it's actally safe to run the script on the exact time.
 
 ### Get IDs
 
