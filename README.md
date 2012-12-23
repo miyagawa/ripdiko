@@ -8,7 +8,7 @@ Set up environment variables:
 
 - `RIPDIKO_AREA_ID`: JP13 for Tokyo, JP14 for Kanagawa, etc. Defaults to JP13
 - `RIPDIKO_OUTDIR`: Output directory to save ripped MP3 files. Defaults to `~/Music/Radiko`
-- `RIPDIKO_BITRATE`: Bitrate for re-encoded MP3. 64kbps by default (Radiko upstram is served around 48kbps)
+- `RIPDIKO_BITRATE`: Bitrate for re-encoded MP3. 96kbps by default (Radiko upstram is served around 48kbps)
 
 Run `ripdiko <station-id>` where station ID is `TBS`, `LFR`, `FMJ` etc. The script will end when the currently playing program ends (which is automatically figured out by using the API).
 

@@ -58,7 +58,7 @@ class DownloadTask
     @cache = CacheDir.new(TMPDIR)
     @buffer = ENV['RIPDIKO_BUFFER'] || 60
     @outdir = ENV['RIPDIKO_OUTDIR'] || "#{ENV['HOME']}/Music/Radiko"
-    @bitrate = ENV['RIPDIKO_BITRATE'] || '64k'
+    @bitrate = ENV['RIPDIKO_BITRATE'] || '96k'
   end
 
   def authenticate
