@@ -12,7 +12,9 @@ Set up environment variables:
 
 Run `ripdiko <station-id>` where station ID is `TBS`, `LFR`, `FMJ` etc. The script will end when the currently playing program ends (which is automatically figured out by using the API).
 
-You can run the script periodically with either crontab or Automator in iCal alarm. Be sure to run the script up to one minute before the show, but not earlier than that. Radiko itself apparently buffers the first 10 second in the stream, so it's safe to run the script on the exact time.
+### Schedule and Buffer
+
+You can run the script periodically with either crontab or Automator in iCal alarm. Be sure to configure the server clock to be accurate. You *could* run the script up to one minute before the show (i.e. run the script on 1:59 for the program that stats on 2:00) if you're paranoid, but don't run it earlier than that. Radiko itself apparently buffers the first 10 to 15 second in the stream, so it's actally safe to run the script on the exact time.
 
 ### Get IDs
 
