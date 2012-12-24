@@ -39,6 +39,8 @@ ripdiko supports calling your script once the recording is done. Save your scrip
 - `RIPDIKO_PROGRAM_PERFORMER`
 - `RIPDIKO_RECORDING_TIME`
 
+Typical use of the scripts would be, but not limited to: send notifications, [generate Podcast feeds](http://github.com/miyagawa/dircaster) or import podcasts to iTunes.
+
 ## Requirements
 
 Recommended to install the following with Homebrew (on Mac OS X) and bundler.
