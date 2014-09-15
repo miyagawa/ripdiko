@@ -150,7 +150,7 @@ class DownloadTask
 
     command = %W(
       rtmpdump --live --quiet
-      -r rtmpe://w-radiko.smartstream.ne.jp
+      -r rtmpe://f-radiko.smartstream.ne.jp
       --playpath simul-stream.stream
       --app #{station}/_definst_
       -W #{PLAYER_URL}
