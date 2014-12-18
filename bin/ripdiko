@@ -224,6 +224,12 @@ end
 
 class AuthResponse
   def initialize(payload)
+    unless payload.valid_encoding?
+      default_encoding = payload.encoding
+      payload.force_encoding(Encoding::UTF_8)
+      payload.force_encoding(default_encoding) unless payload.valid_encoding?
+    end
+
     @payload = payload
   end
 
