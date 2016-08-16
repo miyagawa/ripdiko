@@ -8,6 +8,7 @@ require 'open-uri'
 require 'nokogiri'
 require 'date'
 require 'fileutils'
+require 'mkfifo'
 
 module Notifier
   SCRIPTS = ENV['RIPDIKO_SCRIPTS'] || "#{ENV['HOME']}/.ripdiko/scripts"
@@ -59,6 +60,7 @@ class DownloadTask
     @buffer = ENV['RIPDIKO_BUFFER'] || 60
     @outdir = ENV['RIPDIKO_OUTDIR'] || "#{ENV['HOME']}/Music/Radiko"
     @bitrate = ENV['RIPDIKO_BITRATE'] || '64k'
+    @output = ENV['RIPDIKO_OUTPUT'] == nil ? "file" : ENV['RIPDIKO_OUTPUT']
   end
 
   def authenticate
@@ -145,6 +147,18 @@ class DownloadTask
     duration = program.recording_duration + buffer
 
     tempfile = "#{TMPDIR}/#{program.id}.mp3"
+
+    case @output
+    when "fifo" then
+      tempfile = "#{TMPDIR}/fifo.mp3"
+      if File.exist? tempfile
+        FileUtils.rm tempfile
+      end
+      File.mkfifo tempfile
+    when "stdout"
+      tempfile = "-f mp3 -"
+    end
+
     puts "Streaming #{program.title} ~ #{program.to.strftime("%H:%M")} (#{duration}s)"
     puts "Ripping audio file to #{tempfile}"
 
@@ -170,21 +184,26 @@ class DownloadTask
 
     system command.join(" ")
 
-    FileUtils.mkpath(outdir)
-    File.rename tempfile, "#{outdir}/#{program.id}.mp3"
+    case @output
+    when "file" then
+      FileUtils.mkpath(outdir)
+      File.rename tempfile, "#{outdir}/#{program.id}.mp3"
 
-    notification = {
-      :program => {
-        title: program.title,
-        station: program.station,
-        duration: program.duration,
-        subtitle: program.subtitle,
-        performer: program.performer,
-      },
-      :recording_time => duration
-    }
+      notification = {
+        :program => {
+          title: program.title,
+          station: program.station,
+          duration: program.duration,
+          subtitle: program.subtitle,
+          performer: program.performer,
+        },
+        :recording_time => duration
+      }
 
-    notify :recording_finished, notification
+      notify :recording_finished, notification
+    when "fifo"
+      FileUtils.rm tempfile
+    end
   end
 
   def fetch_auth(url, headers)
