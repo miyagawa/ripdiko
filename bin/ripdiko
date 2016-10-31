@@ -45,7 +45,7 @@ end
 class DownloadTask
   include Notifier
 
-  PLAYER_URL = "http://radiko.jp/player/swf/player_3.0.0.01.swf"
+  PLAYER_URL = "http://radiko.jp/apps/js/flash/myplayer-release.swf"
   TMPDIR = ENV['TMPDIR'] || '/tmp'
 
   attr_accessor :station, :cache, :buffer, :outdir, :bitrate
@@ -66,7 +66,7 @@ class DownloadTask
   def authenticate
     unless cache['authkey.png'].exist?
       download PLAYER_URL, cache['player.swf']
-      system *(%W(swfextract -b 14 #{cache['player.swf']} -o #{cache['authkey.png']}))
+      system *(%W(swfextract -b 12 #{cache['player.swf']} -o #{cache['authkey.png']}))
     end
 
     unless cache['authkey.png'].exist?
@@ -75,8 +75,8 @@ class DownloadTask
 
     res = fetch_auth "https://radiko.jp/v2/api/auth1_fms",
       'pragma' => "no-cache",
-      'X-Radiko-App' => "pc_1",
-      'X-Radiko-App-Version' => "2.0.1",
+      'X-Radiko-App' => "pc_ts",
+      'X-Radiko-App-Version' => "4.0.1",
       'X-Radiko-User' => "test-stream",
       'X-Radiko-Device' => "pc"
 
@@ -90,8 +90,8 @@ class DownloadTask
 
     res = fetch_auth "https://radiko.jp/v2/api/auth2_fms",
       'pragma' => "no-cache",
-      'X-Radiko-App' => "pc_1",
-      'X-Radiko-App-Version' => "2.0.1",
+      'X-Radiko-App' => "pc_ts",
+      'X-Radiko-App-Version' => "4.0.1",
       'X-Radiko-User' => "test-stream",
       'X-Radiko-Device' => "pc",
       'X-Radiko-Authtoken' => token,
