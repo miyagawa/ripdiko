@@ -48,7 +48,7 @@ class DownloadTask
   PLAYER_URL = "http://radiko.jp/apps/js/flash/myplayer-release.swf"
   TMPDIR = ENV['TMPDIR'] || '/tmp'
 
-  attr_accessor :station, :cache, :buffer, :outdir, :bitrate
+  attr_accessor :station, :buffer, :outdir, :bitrate
 
   def initialize(station = nil, duration = 1800, *args)
     unless station
@@ -56,7 +56,6 @@ class DownloadTask
     end
     @station = station
     @duration = duration
-    @cache = CacheDir.new(TMPDIR)
     @buffer = ENV['RIPDIKO_BUFFER'] || 60
     @outdir = ENV['RIPDIKO_OUTDIR'] || "#{ENV['HOME']}/Music/Radiko"
     @bitrate = ENV['RIPDIKO_BITRATE'] || '64k'
@@ -64,41 +63,35 @@ class DownloadTask
   end
 
   def authenticate
-    unless cache['authkey.png'].exist?
-      download PLAYER_URL, cache['player.swf']
-      system *(%W(swfextract -b 12 #{cache['player.swf']} -o #{cache['authkey.png']}))
+    res = fetch 'http://radiko.jp/apps/js/playerCommon.js?_=20171113', {}
+    if /new RadikoJSPlayer\(.*?'pc_html5',\s*'(\w+)'/ === res.body
+      auth_key = $1
+    else
+      abort "retrieving auth_key from playerCommon.js failed"
     end
 
-    unless cache['authkey.png'].exist?
-      abort "failed to extract authkey out of player.swf"
-    end
-
-    res = fetch_auth "https://radiko.jp/v2/api/auth1_fms",
-      'pragma' => "no-cache",
-      'X-Radiko-App' => "pc_ts",
-      'X-Radiko-App-Version' => "4.0.1",
-      'X-Radiko-User' => "test-stream",
+    res = fetch "https://radiko.jp/v2/api/auth1",
+      'X-Radiko-App' => "pc_html5",
+      'X-Radiko-App-Version' => "0.0.1",
+      'X-Radiko-User' => "dummy_user",
       'X-Radiko-Device' => "pc"
 
     unless token = res['X-Radiko-AuthToken']
-      abort "auth1_fms failed"
+      abort "auth1 failed"
     end
 
     length = res['X-Radiko-KeyLength'].to_i
     offset = res['X-Radiko-KeyOffset'].to_i
-    partial_key = Base64.strict_encode64(IO.binread(cache['authkey.png'], length, offset))
+    partial_key = Base64.strict_encode64(auth_key.byteslice(offset, length))
 
-    res = fetch_auth "https://radiko.jp/v2/api/auth2_fms",
-      'pragma' => "no-cache",
-      'X-Radiko-App' => "pc_ts",
-      'X-Radiko-App-Version' => "4.0.1",
-      'X-Radiko-User' => "test-stream",
+    res = fetch "https://radiko.jp/v2/api/auth2",
+      'X-Radiko-User' => "dummy_user",
       'X-Radiko-Device' => "pc",
       'X-Radiko-Authtoken' => token,
       'X-Radiko-Partialkey' => partial_key
 
-    if /^(.*),/ === res.body
-      token
+    if /^([A-Z0-9]+),/ === res.body
+      [token, $1]
     else
       abort "auth2 failed. Outside Japan?"
     end
@@ -112,13 +105,9 @@ class DownloadTask
     DateTime.strptime("#{str}+0900", "%Y%m%d%H%M%S%Z").to_time
   end
 
-  def area_id
-    ENV['RIPDIKO_AREA_ID'] || "JP13" # Tokyo
-  end
-
-  def now_playing(station)
+  def now_playing(station, area)
     now = Time.now
-    doc = Nokogiri::XML(open("http://radiko.jp/v2/api/program/now?area_id=#{area_id}"))
+    doc = Nokogiri::XML(open("http://radiko.jp/v2/api/program/now?area_id=#{area}"))
 
     node = doc.xpath(%Q|//station[@id="#{station}"]|).first
     node.xpath(".//prog").each do |prog|
@@ -141,8 +130,8 @@ class DownloadTask
   end
 
   def run
-    token = authenticate
-    program = now_playing(station)
+    token, area = authenticate
+    program = now_playing(station, area)
 
     duration = program.recording_duration + buffer
 
@@ -206,15 +195,18 @@ class DownloadTask
     end
   end
 
-  def fetch_auth(url, headers)
-    hdrs = headers.map {|k,v| "--header=\"#{k}: #{v}\"" }.join(" ")
-    AuthResponse.new(`wget -q #{hdrs} --post-data='\\r\\n' --no-check-certificate --save-headers -O - #{url}`)
-  end
+  def fetch(url, headers)
+    uri = URI.parse url
 
-  def download(url, path)
-    unless path.exist?
-      system *(%W(wget -q -O #{path} #{url}))
+    http = Net::HTTP.new uri.host, uri.port
+    http.use_ssl = true if uri.scheme == 'https'
+
+    req = Net::HTTP::Get.new uri.request_uri
+    headers.each do |k,v|
+      req[k] = v
     end
+
+    http.request req
   end
 
   def abort(msg)
@@ -238,34 +230,6 @@ class Program
 
   def recording_duration
     (to - Time.now).to_i
-  end
-end
-
-class AuthResponse
-  def initialize(payload)
-    @payload = payload
-  end
-
-  def body
-    @payload.split(/\r\n\r\n/, 2)[1]
-  end
-
-  def [](name)
-    if (match = @payload.scan(/^#{name}[:=] *(\S+)/i).first)
-      match[0]
-    end
-  end
-end
-
-class CacheDir
-  attr_accessor :dir
-  def initialize(dir)
-    @dir = dir
-    @paths = {}
-  end
-
-  def [](name)
-    @paths[name] ||= Pathname.new(File.join(@dir, name))
   end
 end
 

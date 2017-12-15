@@ -48,9 +48,7 @@ Recommended to install the following with Homebrew (on Mac OS X) and bundler.
 - Ruby 1.9
 - Nokogiri
 - rtmpdump
-- swfextract
 - ffmpeg
-- wget
 
 ## Author
 
