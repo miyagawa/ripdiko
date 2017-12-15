@@ -8,7 +8,6 @@ require 'open-uri'
 require 'nokogiri'
 require 'date'
 require 'fileutils'
-require 'mkfifo'
 
 module Notifier
   SCRIPTS = ENV['RIPDIKO_SCRIPTS'] || "#{ENV['HOME']}/.ripdiko/scripts"
@@ -139,6 +138,7 @@ class DownloadTask
 
     case @output
     when "fifo" then
+      require 'mkfifo'
       tempfile = "#{TMPDIR}/fifo.mp3"
       if File.exist? tempfile
         FileUtils.rm tempfile
