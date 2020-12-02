@@ -44,7 +44,7 @@ end
 class DownloadTask
   include Notifier
 
-  PLAYER_URL = "http://radiko.jp/apps/js/flash/myplayer-release.swf"
+  PLAYER_URL = "https://radiko.jp/apps/js/flash/myplayer-release.swf"
   TMPDIR = ENV['TMPDIR'] || '/tmp'
 
   attr_accessor :station, :buffer, :outdir, :bitrate
@@ -62,7 +62,7 @@ class DownloadTask
   end
 
   def authenticate
-    res = fetch 'http://radiko.jp/apps/js/playerCommon.js?_=20171113', {}
+    res = fetch 'https://radiko.jp/apps/js/playerCommon.js?_=20171113', {}
     if /new RadikoJSPlayer\(.*?'pc_html5',\s*'(\w+)'/ === res.body
       auth_key = $1
     else
@@ -106,7 +106,7 @@ class DownloadTask
 
   def now_playing(station, area)
     now = Time.now
-    doc = Nokogiri::XML(URI.open("http://radiko.jp/v2/api/program/now?area_id=#{area}"))
+    doc = Nokogiri::XML(URI.open("https://radiko.jp/v2/api/program/now?area_id=#{area}"))
 
     node = doc.xpath(%Q|//station[@id="#{station}"]|).first
     node.xpath(".//prog").each do |prog|
