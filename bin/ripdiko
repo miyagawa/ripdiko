@@ -47,7 +47,7 @@ class DownloadTask
   PLAYER_URL = "https://radiko.jp/apps/js/flash/myplayer-release.swf"
   TMPDIR = ENV['TMPDIR'] || '/tmp'
 
-  attr_accessor :station, :buffer, :outdir, :bitrate
+  attr_accessor :station, :buffer, :outdir
 
   def initialize(station = nil, duration = 1800, *args)
     unless station
@@ -57,7 +57,6 @@ class DownloadTask
     @duration = duration
     @buffer = ENV['RIPDIKO_BUFFER'] || 60
     @outdir = ENV['RIPDIKO_OUTDIR'] || "#{ENV['HOME']}/Music/Radiko"
-    @bitrate = ENV['RIPDIKO_BITRATE'] || '64k'
     @output = ENV['RIPDIKO_OUTPUT'] == nil ? "file" : ENV['RIPDIKO_OUTPUT']
   end
 
@@ -134,18 +133,18 @@ class DownloadTask
 
     duration = program.recording_duration + buffer
 
-    tempfile = "#{TMPDIR}/#{program.id}.mp3"
+    tempfile = "#{TMPDIR}/#{program.id}.m4a"
 
     case @output
     when "fifo" then
       require 'mkfifo'
-      tempfile = "#{TMPDIR}/fifo.mp3"
+      tempfile = "#{TMPDIR}/fifo.m4a"
       if File.exist? tempfile
         FileUtils.rm tempfile
       end
       File.mkfifo tempfile
     when "stdout"
-      tempfile = "-f mp3 -"
+      tempfile = "-f m4a -"
     end
 
     puts "Streaming #{program.title} ~ #{program.to.strftime("%H:%M")} (#{duration}s)"
@@ -167,7 +166,7 @@ class DownloadTask
       -metadata album="#{program.title}"
       -metadata genre=Radio
       -metadata year="#{program.effective_date.year}"
-      -acodec libmp3lame -ar 44100 -ab #{bitrate} -ac 2
+      -c copy
       #{tempfile}
     )
 
@@ -176,7 +175,7 @@ class DownloadTask
     case @output
     when "file" then
       FileUtils.mkpath(outdir)
-      File.rename tempfile, "#{outdir}/#{program.id}.mp3"
+      File.rename tempfile, "#{outdir}/#{program.id}.m4a"
 
       notification = {
         :program => {
