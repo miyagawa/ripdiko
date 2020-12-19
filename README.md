@@ -1,13 +1,12 @@
 # ripdiko
 
-ripdiko rips radiko.jp streams and encodes them in MP3. Metadata such as program title, station name and recording length is automatically determined by fetching the metadata via Radiko's (supposedly unofficial) API, and embedded in the output audio file.
+ripdiko rips radiko.jp streams. Metadata such as program title, station name and recording length is automatically determined by fetching the metadata via Radiko's (supposedly unofficial) API, and embedded in the output audio file.
 
 ## How to use
 
 Set up environment variables:
 
-- `RIPDIKO_OUTDIR`: Output directory to save ripped MP3 files. Defaults to `~/Music/Radiko`
-- `RIPDIKO_BITRATE`: Bitrate for re-encoded MP3. 64kbps by default (Radiko upstram is served around 48kbps)
+- `RIPDIKO_OUTDIR`: Output directory to save ripped M4A files. Defaults to `~/Music/Radiko`
 
 Run `ripdiko <station-id>` where station ID is `TBS`, `LFR`, `FMJ` etc. The script will end when the currently playing program ends (which is automatically figured out by using the API).
 
