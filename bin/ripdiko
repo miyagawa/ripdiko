@@ -106,7 +106,7 @@ class DownloadTask
 
   def now_playing(station, area)
     now = Time.now
-    doc = Nokogiri::XML(URI.open("https://radiko.jp/v2/api/program/now?area_id=#{area}"))
+    doc = Nokogiri::XML(URI.parse("https://radiko.jp/v2/api/program/now?area_id=#{area}").open)
 
     node = doc.xpath(%Q|//station[@id="#{station}"]|).first
     node.xpath(".//prog").each do |prog|
