@@ -152,22 +152,20 @@ class DownloadTask
     puts "Ripping audio file to #{tempfile}"
 
     command = %W(
-      rtmpdump --live --quiet
-      -r rtmpe://f-radiko.smartstream.ne.jp
-      --playpath simul-stream.stream
-      --app #{station}/_definst_
-      -W #{PLAYER_URL}
-      -C S:"" -C S:"" -C S:"" -C S:#{token}
-      --live --stop #{duration} -o - |
-      ffmpeg -y -i - -vn
-      -loglevel error
+      ffmpeg -loglevel error
+      -fflags +discardcorrupt
+      -headers "X-Radiko-Authtoken: #{token}"
+      -i http://f-radiko.smartstream.ne.jp/#{station}/_definst_/simul-stream.stream/playlist.m3u8
+      -acodec libmp3lame -ar 44100 -ab #{bitrate} -ac 2
+      -vn
+      -y
+      -t #{duration}
       -metadata author="#{program.performer}"
       -metadata artist="#{program.station}"
       -metadata title="#{program.title} #{program.effective_date.strftime}"
       -metadata album="#{program.title}"
       -metadata genre=Radio
       -metadata year="#{program.effective_date.year}"
-      -acodec libmp3lame -ar 44100 -ab #{bitrate} -ac 2
       #{tempfile}
     )
 
