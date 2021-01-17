@@ -36,9 +36,8 @@ Typical use of the scripts would be, but not limited to: send notifications, [ge
 
 Recommended to install the following with Homebrew (on Mac OS X) and bundler.
 
-- Ruby 1.9
+- Ruby
 - Nokogiri
-- rtmpdump
 - ffmpeg
 
 ## Author
