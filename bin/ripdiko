@@ -106,7 +106,7 @@ class DownloadTask
 
   def now_playing(station, area)
     now = Time.now
-    doc = Nokogiri::XML(URI.parse("https://radiko.jp/v2/api/program/now?area_id=#{area}").open)
+    doc = Nokogiri::XML(URI.parse("https://radiko.jp/v3/program/now/#{area}.xml").open)
 
     node = doc.xpath(%Q|//station[@id="#{station}"]|).first
     node.xpath(".//prog").each do |prog|
@@ -120,9 +120,10 @@ class DownloadTask
           from: from,
           to: to,
           duration: prog[:dur].to_i,
-          subtitle: val(prog, :sub_title),
           performer: val(prog, :pfm),
           info: val(prog, :info),
+          image: val(prog, :img),
+          url: val(prog, :url),
         )
       end
     end
@@ -145,44 +146,61 @@ class DownloadTask
       end
       File.mkfifo tempfile
     when "stdout"
-      tempfile = "-f mp3 -"
+      tempfile = "-"
     end
 
     puts "Streaming #{program.title} ~ #{program.to.strftime("%H:%M")} (#{duration}s)"
     puts "Ripping audio file to #{tempfile}"
 
-    command = %W(
-      ffmpeg -loglevel error
-      -fflags +discardcorrupt
-      -headers "X-Radiko-Authtoken: #{token}"
-      -i http://f-radiko.smartstream.ne.jp/#{station}/_definst_/simul-stream.stream/playlist.m3u8
-      -acodec libmp3lame -ar 44100 -ab #{bitrate} -ac 2
-      -vn
-      -y
-      -t #{duration}
-      -metadata author="#{program.performer}"
-      -metadata artist="#{program.station}"
-      -metadata title="#{program.title} #{program.effective_date.strftime}"
-      -metadata album="#{program.title}"
-      -metadata genre=Radio
-      -metadata year="#{program.effective_date.year}"
-      #{tempfile}
-    )
+    command = [
+      "ffmpeg", "-loglevel", "error",
+      "-fflags", "+discardcorrupt",
+      "-headers", "X-Radiko-Authtoken: #{token}",
+      "-i", "http://f-radiko.smartstream.ne.jp/#{station}/_definst_/simul-stream.stream/playlist.m3u8",
+      "-acodec", "libmp3lame", "-ar", "44100", "-ab", bitrate, "-ac", "2",
+      "-vn",
+      "-y",
+      "-t", duration.to_s,
+      "-metadata", %Q[author="#{program.performer}"],
+      "-metadata", %Q[artist="#{program.station}"],
+      "-metadata", %Q[title="#{program.title} #{program.effective_date.strftime}"],
+      "-metadata", %Q[album="#{program.title}"],
+      "-metadata", %Q[genre=Radio],
+      "-metadata", %Q[year="#{program.effective_date.year}"],
+      "-f", "mp3",
+      tempfile,
+    ]
 
-    system command.join(" ")
+    system *command
 
     case @output
     when "file" then
       FileUtils.mkpath(outdir)
-      File.rename tempfile, "#{outdir}/#{program.id}.mp3"
+
+      if program.image
+        command = [
+          "ffmpeg",
+          "-loglevel", "error", "-y",
+          "-i", tempfile, "-i", program.image,
+          "-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3",
+          "-metadata:s:v", 'title="Album cover"',
+          "-metadata:s:v", 'comment="Cover (front)"',
+          "#{outdir}/#{program.id}.mp3",
+        ]
+        system *command
+        File.delete tempfile
+      else
+        File.rename tempfile, "#{outdir}/#{program.id}.mp3"
+      end
 
       notification = {
         :program => {
           title: program.title,
           station: program.station,
           duration: program.duration,
-          subtitle: program.subtitle,
           performer: program.performer,
+          image: program.image,
+          url: program.url,
         },
         :recording_time => duration
       }
@@ -214,7 +232,7 @@ class DownloadTask
 end
 
 class Program
-  attr_accessor :id, :station, :title, :from, :to, :duration, :subtitle, :performer, :info
+  attr_accessor :id, :station, :title, :from, :to, :duration, :performer, :info, :image, :url
   def initialize(args = {})
     args.each do |k, v|
       send "#{k}=", v
