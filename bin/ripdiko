@@ -134,6 +134,7 @@ class DownloadTask
     program = now_playing(station, area)
 
     duration = program.recording_duration + buffer
+    duration = 15
 
     tempfile = "#{TMPDIR}/#{program.id}.mp3"
 
@@ -161,10 +162,10 @@ class DownloadTask
       "-vn",
       "-y",
       "-t", duration.to_s,
-      "-metadata", %Q[author="#{program.performer}"],
-      "-metadata", %Q[artist="#{program.station}"],
-      "-metadata", %Q[title="#{program.title} #{program.effective_date.strftime}"],
-      "-metadata", %Q[album="#{program.title}"],
+      "-metadata", %Q[author=#{program.performer}],
+      "-metadata", %Q[artist=#{program.station}],
+      "-metadata", %Q[title=#{program.title} #{program.effective_date.strftime}],
+      "-metadata", %Q[album=#{program.title}],
       "-metadata", %Q[genre=Radio],
       "-metadata", %Q[year="#{program.effective_date.year}"],
       "-f", "mp3",
@@ -183,8 +184,8 @@ class DownloadTask
           "-loglevel", "error", "-y",
           "-i", tempfile, "-i", program.image,
           "-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3",
-          "-metadata:s:v", 'title="Album cover"',
-          "-metadata:s:v", 'comment="Cover (front)"',
+          "-metadata:s:v", 'title=Album cover',
+          "-metadata:s:v", 'comment=Cover (front)',
           "#{outdir}/#{program.id}.mp3",
         ]
         system *command
