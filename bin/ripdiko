@@ -134,7 +134,6 @@ class DownloadTask
     program = now_playing(station, area)
 
     duration = program.recording_duration + buffer
-    duration = 15
 
     tempfile = "#{TMPDIR}/#{program.id}.mp3"
 
@@ -162,12 +161,12 @@ class DownloadTask
       "-vn",
       "-y",
       "-t", duration.to_s,
-      "-metadata", %Q[author=#{program.performer}],
-      "-metadata", %Q[artist=#{program.station}],
-      "-metadata", %Q[title=#{program.title} #{program.effective_date.strftime}],
-      "-metadata", %Q[album=#{program.title}],
-      "-metadata", %Q[genre=Radio],
-      "-metadata", %Q[year="#{program.effective_date.year}"],
+      "-metadata", "author=#{program.performer}",
+      "-metadata", "artist=#{program.station}",
+      "-metadata", "title=#{program.title} #{program.effective_date.strftime}",
+      "-metadata", "album=#{program.title}",
+      "-metadata", "genre=Radio",
+      "-metadata", "year=#{program.effective_date.year}",
       "-f", "mp3",
       tempfile,
     ]
