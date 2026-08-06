@@ -8,6 +8,7 @@ require 'open-uri'
 require 'nokogiri'
 require 'date'
 require 'fileutils'
+require 'securerandom'
 
 module Notifier
   SCRIPTS = ENV['RIPDIKO_SCRIPTS'] || "#{ENV['HOME']}/.ripdiko/scripts"
@@ -129,6 +130,22 @@ class DownloadTask
     end
   end
 
+  # radiko no longer serves the per-station simul-stream path. The live HLS
+  # endpoint has to be looked up per station, then given the stream parameters
+  # as a query string.
+  def stream_url(station)
+    doc = Nokogiri::XML(URI.parse("https://radiko.jp/v3/station/stream/pc_html5/#{station}.xml").open)
+
+    node = doc.xpath(%q|//url[@timefree="0"][@areafree="0"]|).first ||
+           doc.xpath(%q|//url[@timefree="0"]|).first
+    unless node
+      abort "no live stream URL found for #{station}"
+    end
+
+    base = val(node, :playlist_create_url)
+    "#{base}?station_id=#{station}&l=15&lsid=#{SecureRandom.hex(16)}&type=b"
+  end
+
   def run
     token, area = authenticate
     program = now_playing(station, area)
@@ -155,8 +172,11 @@ class DownloadTask
     command = [
       "ffmpeg", "-loglevel", "error",
       "-fflags", "+discardcorrupt",
-      "-headers", "X-Radiko-Authtoken: #{token}",
-      "-i", "http://f-radiko.smartstream.ne.jp/#{station}/_definst_/simul-stream.stream/playlist.m3u8",
+      # ffmpeg sends "Range: bytes=0-" by default, and the medialist endpoint
+      # answers that with a 6 byte "200 OK" body instead of the playlist.
+      "-seekable", "0", "-http_seekable", "0",
+      "-headers", "X-Radiko-Authtoken: #{token}\r\nX-Radiko-AreaId: #{area}\r\n",
+      "-i", stream_url(station),
       "-acodec", "libmp3lame", "-ar", "44100", "-ab", bitrate, "-ac", "2",
       "-vn",
       "-y",
@@ -171,10 +191,16 @@ class DownloadTask
       tempfile,
     ]
 
-    system *command
+    unless system *command
+      abort "ffmpeg failed to record the stream"
+    end
 
     case @output
     when "file" then
+      unless File.exist?(tempfile) && File.size(tempfile) > 0
+        abort "ffmpeg produced no audio at #{tempfile}"
+      end
+
       FileUtils.mkpath(outdir)
 
       if program.image
